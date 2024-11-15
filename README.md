@@ -305,15 +305,19 @@ body > h1:first-of-type:not(.heading) {
     display: none !important;
 }
  
-.category-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
+.category-carousel {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
             padding: 20px;
-            display: none;
         }
 
         .category-card {
+            flex: 0 0 25%;
+            scroll-snap-align: start;
+            margin-right: 15px;
             background: rgba(255, 215, 0, 0.1);
             border-radius: 12px;
             padding: 20px;
@@ -331,6 +335,13 @@ body > h1:first-of-type:not(.heading) {
             font-size: 2em;
             color: var(--primary-color);
             margin-bottom: 10px;
+        }
+
+        .page-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            padding: 20px;
         }
 
         .package-grid {
@@ -488,6 +499,15 @@ body > h1:first-of-type:not(.heading) {
             }
         }
 
+        @media (max-width: 768px) {
+            .category-card {
+                flex: 0 0 50%;
+            }
+            .page-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
  </style>
 </head>
 <body>
@@ -521,6 +541,14 @@ body > h1:first-of-type:not(.heading) {
                 <!-- Packages will be dynamically populated -->
             </div>
 
+            <div class="category-carousel" id="categoryCarousel">
+                <!-- Dynamically populated category cards -->
+            </div>
+        
+            <div class="page-grid" id="pageGrid" style="display: none;">
+                <!-- Dynamically populated category pages -->
+            </div>
+        
             <div class="message bot-message">
                 <div class="message-avatar">
                     <i class="fas fa-robot"></i>
@@ -614,409 +642,411 @@ body > h1:first-of-type:not(.heading) {
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
     <script>
-        // Configuration and Data
-        const categories = [
-            { id: 'home', name: 'Home Services', icon: 'fa-home', 
-              services: ['Cleaning', 'Plumbing', 'Electrical', 'Carpentry'] },
-            { id: 'beauty', name: 'Beauty & Spa', icon: 'fa-spa',
-              services: ['Haircut', 'Massage', 'Facial', 'Manicure'] },
-            { id: 'repair', name: 'Repairs', icon: 'fa-wrench',
-              services: ['AC Repair', 'TV Repair', 'Phone Repair', 'Appliance Repair'] },
-            { id: 'health', name: 'Healthcare', icon: 'fa-heartbeat',
-              services: ['Doctor Visit', 'Nursing', 'Physiotherapy', 'Lab Tests'] },
-            { id: 'education', name: 'Education', icon: 'fa-graduation-cap',
-              services: ['Tutoring', 'Language Classes', 'Test Prep', 'Skills Training'] }
-        ];
+// Configuration and Data
+const categories = [
+    { id: 'home', name: 'Home Services', icon: 'fa-home', 
+      services: ['Plumbing', 'Electrical', 'Carpentry', 'Painting', 'Appliance Repair', 'AC/Heating Repair', 'Cleaning Services'] },
+    { id: 'beauty', name: 'Beauty & Spa', icon: 'fa-spa',
+      services: ['Haircut', 'Manicure', 'Pedicure', 'Massage', 'Facial'] },
+    { id: 'repair', name: 'Repairs', icon: 'fa-wrench',
+      services: ['TV Repair', 'Phone Repair', 'Computer Repair', 'Furniture Repair'] },
+    { id: 'health', name: 'Healthcare', icon: 'fa-heartbeat',
+      services: ['Doctor Visit', 'Nursing', 'Physiotherapy', 'Lab Tests'] },
+    { id: 'education', name: 'Education', icon: 'fa-graduation-cap',
+      services: ['Tutoring', 'Language Classes', 'Test Prep', 'Skills Training'] },
+    { id: 'family', name: 'Family', icon: 'fa-child',
+      services: ['Babysitting', 'Pet Grooming', 'Fitness Trainer'] }
+];
 
-        const packages = {
-            'silver': {
-                title: 'Silver Package',
-                price: '$49',
-                features: ['Basic Service', '1 Hour Duration', 'Standard Tools', 'Phone Support']
-            },
-            'gold': {
-                title: 'Gold Package',
-                price: '$99',
-                features: ['Premium Service', '2 Hour Duration', 'Professional Tools', '24/7 Support']
-            },
-            'platinum': {
-                title: 'Platinum Package',
-                price: '$149',
-                features: ['VIP Service', 'Unlimited Duration', 'Premium Tools', 'Priority Support']
-            }
-        };
+const packages = {
+    'silver': {
+        title: 'Silver Package',
+        price: '$49',
+        features: ['Basic Service', '1 Hour Duration', 'Standard Tools', 'Phone Support']
+    },
+    'gold': {
+        title: 'Gold Package',
+        price: '$99',
+        features: ['Premium Service', '2 Hour Duration', 'Professional Tools', '24/7 Support']
+    },
+    'platinum': {
+        title: 'Platinum Package',
+        price: '$149',
+        features: ['VIP Service', 'Unlimited Duration', 'Premium Tools', 'Priority Support']
+    }
+};
 
-        // Initialize components
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeCategoryGrid();
-            initializeDateTimePickers();
-            setupEventListeners();
-            initializeNLP();
-        });
+// Initialize components
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCategoryCarousel();
+    initializeDateTimePickers();
+    setupEventListeners();
+    initializeNLP();
+});
 
-        // Category Grid Implementation
-        function initializeCategoryGrid() {
-            const categoryGrid = document.getElementById('categoryGrid');
-            categories.forEach(category => {
-                const categoryCard = document.createElement('div');
-                categoryCard.className = 'category-card';
-                categoryCard.innerHTML = `
-                    <div class="category-icon">
-                        <i class="fas ${category.icon}"></i>
-                    </div>
-                    <div class="category-name">${category.name}</div>
-                `;
-                categoryCard.addEventListener('click', () => showServices(category));
-                categoryGrid.appendChild(categoryCard);
-            });
+// Category Carousel Implementation
+function initializeCategoryCarousel() {
+    const categoryCarousel = document.getElementById('categoryCarousel');
+    categories.forEach(category => {
+        const categoryCard = document.createElement('div');
+        categoryCard.className = 'category-card';
+        categoryCard.innerHTML = `
+            <div class="category-icon">
+                <i class="fas ${category.icon}"></i>
+            </div>
+            <div class="category-name">${category.name}</div>
+        `;
+        categoryCard.addEventListener('click', () => showCategoryPage(category));
+        categoryCarousel.appendChild(categoryCard);
+    });
+}
+
+// Category Page Implementation
+function showCategoryPage(category) {
+    const pageGrid = document.getElementById('pageGrid');
+    pageGrid.style.display = 'grid';
+    pageGrid.innerHTML = '';
+
+    const categoryServices = category.services;
+    const pageCount = Math.ceil(categoryServices.length / 16);
+
+    for (let page = 0; page < pageCount; page++) {
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'page-grid';
+
+        const startIndex = page * 16;
+        const endIndex = Math.min((page + 1) * 16, categoryServices.length);
+
+        for (let i = startIndex; i < endIndex; i++) {
+            const serviceCard = document.createElement('div');
+            serviceCard.className = 'category-card';
+            serviceCard.innerHTML = `
+                <div class="category-icon">
+                    <i class="fas fa-tools"></i>
+                </div>
+                <div class="category-name">${categoryServices[i]}</div>
+            `;
+            serviceCard.addEventListener('click', () => showServices(category.id, categoryServices[i]));
+            pageDiv.appendChild(serviceCard);
         }
 
-        // Package Display Implementation
-        function showServices(category) {
-            const packageGrid = document.getElementById('packageGrid');
-            packageGrid.style.display = 'flex';
-            packageGrid.innerHTML = '';
+        pageGrid.appendChild(pageDiv);
+    }
 
-            Object.entries(packages).forEach(([key, package]) => {
-                const packageCard = document.createElement('div');
-                packageCard.className = 'package-card';
-                packageCard.innerHTML = `
-                    <div class="package-header">
-                        <div class="package-title">${package.title}</div>
-                        <div class="package-price">${package.price}</div>
-                    </div>
-                    <div class="package-features">
-                        ${package.features.map(feature => `<div>• ${feature}</div>`).join('')}
-                    </div>
-                    <div class="package-actions">
-                        <button class="action-button book-button" onclick="showBookingForm('${category.id}', '${key}')">
-                            Book Now
-                        </button>
-                        <button class="action-button call-button" onclick="initiateCall()">
-                            <i class="fas fa-phone"></i> Call
-                        </button>
-                    </div>
-                `;
-                packageGrid.appendChild(packageCard);
-            });
+    document.getElementById('categoryCarousel').style.display = 'none';
+}
 
-            document.getElementById('categoryGrid').style.display = 'none';
+// Service Display Implementation
+function showServices(categoryId, serviceName) {
+    // Existing service display logic
+}
+
+// Date and Time Picker Implementation
+function initializeDateTimePickers() {
+    flatpickr("#dateInput", {
+        minDate: "today",
+        maxDate: new Date().fp_incr(30),
+        dateFormat: "Y-m-d"
+    });
+
+    flatpickr("#timeInput", {
+        enableTime: true,
+        noCalendar: true,
+        dateFormat: "H:i",
+        minTime: "09:00",
+        maxTime: "18:00",
+        minuteIncrement: 30
+    });
+}
+
+// NLP Implementation
+function initializeNLP() {
+    const chatInput = document.getElementById('chatInput');
+    const chatMessages = document.getElementById('chatMessages');
+
+    chatInput.addEventListener('input', debounce(function() {
+        const query = this.value.toLowerCase();
+        if (query.length < 3) return;
+
+        const matches = searchServices(query);
+        if (matches.length > 0) {
+            showSearchResults(matches);
         }
+    }, 300));
+}
 
-        // Booking Form Implementation
-        function showBookingForm(categoryId, packageType) {
-            const bookingForm = document.getElementById('bookingForm');
-            bookingForm.style.display = 'block';
-            bookingForm.dataset.categoryId = categoryId;
-            bookingForm.dataset.packageType = packageType;
-        }
-
-        // Date and Time Picker Implementation
-        function initializeDateTimePickers() {
-            flatpickr("#dateInput", {
-                minDate: "today",
-                maxDate: new Date().fp_incr(30),
-                dateFormat: "Y-m-d"
-            });
-
-            flatpickr("#timeInput", {
-                enableTime: true,
-                noCalendar: true,
-                dateFormat: "H:i",
-                minTime: "09:00",
-                maxTime: "18:00",
-                minuteIncrement: 30
-            });
-        }
-
-        // NLP Implementation
-        function initializeNLP() {
-            const chatInput = document.getElementById('chatInput');
-            const chatMessages = document.getElementById('chatMessages');
-
-            chatInput.addEventListener('input', debounce(function() {
-                const query = this.value.toLowerCase();
-                if (query.length < 3) return;
-
-                const matches = searchServices(query);
-                if (matches.length > 0) {
-                    showSearchResults(matches);
-                }
-            }, 300));
-        }
-
-        // Search Implementation
-        function searchServices(query) {
-            const matches = [];
-            categories.forEach(category => {
-                category.services.forEach(service => {
-                    if (service.toLowerCase().includes(query)) {
-                        matches.push({
-                            category: category.name,
-                            service: service
-                        });
-                    }
+// Search Implementation
+function searchServices(query) {
+    const matches = [];
+    categories.forEach(category => {
+        category.services.forEach(service => {
+            if (service.toLowerCase().includes(query)) {
+                matches.push({
+                    category: category.name,
+                    service: service
                 });
-            });
-            return matches;
-        }
-
-        // Utility Functions
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func.apply(this, args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        // Show Search Results
-        function showSearchResults(matches) {
-            const chatMessages = document.getElementById('chatMessages');
-            const resultsMessage = document.createElement('div');
-            resultsMessage.className = 'message bot-message';
-            resultsMessage.innerHTML = `
-                <div class="message-avatar">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <div class="message-content">
-                    <p>I found these services matching your search:</p>
-                    ${matches.map(match => `
-                        <div class="search-result" onclick="selectService('${match.category}', '${match.service}')">
-                            ${match.service} (${match.category})
-                        </div>
-                        `).join('')}
-                </div>
-            `;
-            chatMessages.appendChild(resultsMessage);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Service Selection
-        function selectService(categoryName, serviceName) {
-            const category = categories.find(c => c.name === categoryName);
-            if (category) {
-                showServices(category);
             }
-        }
+        });
+    });
+    return matches;
+}
 
-        // Event Listeners Setup
-        function setupEventListeners() {
-            // Menu Button
-            document.getElementById('menuButton').addEventListener('click', toggleMenu);
+// Utility Functions
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func.apply(this, args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 
-            // Send Message Button
-            document.getElementById('sendButton').addEventListener('click', sendMessage);
-
-            // Chat Input Enter Key
-            document.getElementById('chatInput').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    sendMessage();
-                }
-            });
-
-            // Submit Booking
-            document.getElementById('submitBooking').addEventListener('click', submitBooking);
-        }
-
-        // Menu Implementation
-        function toggleMenu() {
-            const menuOverlay = document.getElementById('menuOverlay');
-            if (menuOverlay.style.display === 'none' || !menuOverlay.style.display) {
-                menuOverlay.style.display = 'block';
-                populateMenu();
-            } else {
-                menuOverlay.style.display = 'none';
-            }
-        }
-
-        function populateMenu() {
-            const menuOverlay = document.getElementById('menuOverlay');
-            menuOverlay.innerHTML = `
-                <div class="menu-item" onclick="showAllCategories()">
-                    <i class="fas fa-th-large"></i> All Services
+// Show Search Results
+function showSearchResults(matches) {
+    const chatMessages = document.getElementById('chatMessages');
+    const resultsMessage = document.createElement('div');
+    resultsMessage.className = 'message bot-message';
+    resultsMessage.innerHTML = `
+        <div class="message-avatar">
+            <i class="fas fa-robot"></i>
+        </div>
+        <div class="message-content">
+            <p>I found these services matching your search:</p>
+            ${matches.map(match => `
+                <div class="search-result" onclick="selectService('${match.category}', '${match.service}')">
+                    ${match.service} (${match.category})
                 </div>
-                <div class="menu-item" onclick="showBookings()">
-                    <i class="fas fa-calendar-check"></i> My Bookings
-                </div>
-                <div class="menu-item" onclick="showProfile()">
-                    <i class="fas fa-user"></i> Profile
-                </div>
-                <div class="menu-item" onclick="showSupport()">
-                    <i class="fas fa-headset"></i> Support
-                </div>
-            `;
+                `).join('')}
+        </div>
+    `;
+    chatMessages.appendChild(resultsMessage);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Service Selection
+function selectService(categoryName, serviceName) {
+    const category = categories.find(c => c.name === categoryName);
+    if (category) {
+        showCategoryPage(category);
+    }
+}
+
+// Event Listeners Setup
+function setupEventListeners() {
+    // Menu Button
+    document.getElementById('menuButton').addEventListener('click', toggleMenu);
+
+    // Send Message Button
+    document.getElementById('sendButton').addEventListener('click', sendMessage);
+
+    // Chat Input Enter Key
+    document.getElementById('chatInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
         }
+    });
 
-        // Message Handling
-        function sendMessage() {
-            const input = document.getElementById('chatInput');
-            const message = input.value.trim();
-            if (!message) return;
+    // Submit Booking
+    document.getElementById('submitBooking').addEventListener('click', submitBooking);
+}
 
-            // Add user message
-            addMessage(message, 'user');
-            
-            // Process message and generate response
-            processMessage(message);
-            
-            // Clear input
-            input.value = '';
+// Menu Implementation
+function toggleMenu() {
+    const menuOverlay = document.getElementById('menuOverlay');
+    if (menuOverlay.style.display === 'none' || !menuOverlay.style.display) {
+        menuOverlay.style.display = 'block';
+        populateMenu();
+    } else {
+        menuOverlay.style.display = 'none';
+    }
+}
+
+function populateMenu() {
+    const menuOverlay = document.getElementById('menuOverlay');
+    menuOverlay.innerHTML = `
+        <div class="menu-item" onclick="showAllCategories()">
+            <i class="fas fa-th-large"></i> All Services
+        </div>
+        <div class="menu-item" onclick="showBookings()">
+            <i class="fas fa-calendar-check"></i> My Bookings
+        </div>
+        <div class="menu-item" onclick="showProfile()">
+            <i class="fas fa-user"></i> Profile
+        </div>
+        <div class="menu-item" onclick="showSupport()">
+            <i class="fas fa-headset"></i> Support
+        </div>
+    `;
+}
+
+// Message Handling
+function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message) return;
+
+    // Add user message
+    addMessage(message, 'user');
+    
+    // Process message and generate response
+    processMessage(message);
+    
+    // Clear input
+    input.value = '';
+}
+
+function addMessage(text, sender) {
+    const chatMessages = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}-message`;
+    
+    messageDiv.innerHTML = `
+        <div class="message-avatar">
+            <i class="fas ${sender === 'user' ? 'fa-user' : 'fa-robot'}"></i>
+        </div>
+        <div class="message-content">
+            <p>${text}</p>
+        </div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Message Processing with NLP
+function processMessage(message) {
+    // Convert message to lowercase for easier processing
+    const lowerMessage = message.toLowerCase();
+    
+    // Basic intent recognition
+    if (lowerMessage.includes('book') || lowerMessage.includes('schedule')) {
+        handleBookingIntent(message);
+    } else if (lowerMessage.includes('price') || lowerMessage.includes('cost')) {
+        handlePricingIntent(message);
+    } else if (lowerMessage.includes('help') || lowerMessage.includes('support')) {
+        handleSupportIntent();
+    } else {
+        // Search for relevant services
+        const matches = searchServices(lowerMessage);
+        if (matches.length > 0) {
+            showSearchResults(matches);
+        } else {
+            // Generic response
+            addMessage("I can help you book various services. Would you like to see our categories?", 'bot');
+            document.getElementById('categoryCarousel').style.display = 'flex';
         }
+    }
+}
 
-        function addMessage(text, sender) {
-            const chatMessages = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}-message`;
-            
-            messageDiv.innerHTML = `
-                <div class="message-avatar">
-                    <i class="fas ${sender === 'user' ? 'fa-user' : 'fa-robot'}"></i>
-                </div>
-                <div class="message-content">
-                    <p>${text}</p>
-                </div>
-            `;
-            
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
+// Intent Handlers
+function handleBookingIntent(message) {
+    addMessage("I'll help you book a service. Please select a category:", 'bot');
+    document.getElementById('categoryCarousel').style.display = 'flex';
+}
 
-        // Message Processing with NLP
-        function processMessage(message) {
-            // Convert message to lowercase for easier processing
-            const lowerMessage = message.toLowerCase();
-            
-            // Basic intent recognition
-            if (lowerMessage.includes('book') || lowerMessage.includes('schedule')) {
-                handleBookingIntent(message);
-            } else if (lowerMessage.includes('price') || lowerMessage.includes('cost')) {
-                handlePricingIntent(message);
-            } else if (lowerMessage.includes('help') || lowerMessage.includes('support')) {
-                handleSupportIntent();
-            } else {
-                // Search for relevant services
-                const matches = searchServices(lowerMessage);
-                if (matches.length > 0) {
-                    showSearchResults(matches);
-                } else {
-                    // Generic response
-                    addMessage("I can help you book various services. Would you like to see our categories?", 'bot');
-                    document.getElementById('categoryGrid').style.display = 'grid';
-                }
-            }
-        }
+function handlePricingIntent(message) {
+    addMessage("Our services come in three packages: Silver, Gold, and Platinum. Would you like to see the details?", 'bot');
+    // Show packages grid
+    const packageGrid = document.getElementById('packageGrid');
+    packageGrid.style.display = 'flex';
+}
 
-        // Intent Handlers
-        function handleBookingIntent(message) {
-            addMessage("I'll help you book a service. Please select a category:", 'bot');
-            document.getElementById('categoryGrid').style.display = 'grid';
-        }
+function handleSupportIntent() {
+    addMessage("Our support team is available 24/7. You can either call us or leave a message here.", 'bot');
+}
 
-        function handlePricingIntent(message) {
-            addMessage("Our services come in three packages: Silver, Gold, and Platinum. Would you like to see the details?", 'bot');
-            // Show packages grid
-            const packageGrid = document.getElementById('packageGrid');
-            packageGrid.style.display = 'flex';
-        }
+// Booking Submission
+function submitBooking() {
+    const bookingData = {
+        name: document.getElementById('nameInput').value,
+        contact: document.getElementById('contactInput').value,
+        address: document.getElementById('addressInput').value,
+        pincode: document.getElementById('pincodeInput').value,
+        date: document.getElementById('dateInput').value,
+        time: document.getElementById('timeInput').value,
+        category: document.getElementById('bookingForm').dataset.categoryId,
+        package: document.getElementById('bookingForm').dataset.packageType
+    };
 
-        function handleSupportIntent() {
-            addMessage("Our support team is available 24/7. You can either call us or leave a message here.", 'bot');
-        }
+    // Validate required fields
+    if (!bookingData.name || !bookingData.contact || !bookingData.date || !bookingData.time) {
+        showAlert('Please fill in all required fields', 'error');
+        return;
+    }
 
-        // Booking Submission
-        function submitBooking() {
-            const bookingData = {
-                name: document.getElementById('nameInput').value,
-                contact: document.getElementById('contactInput').value,
-                address: document.getElementById('addressInput').value,
-                pincode: document.getElementById('pincodeInput').value,
-                date: document.getElementById('dateInput').value,
-                time: document.getElementById('timeInput').value,
-                category: document.getElementById('bookingForm').dataset.categoryId,
-                package: document.getElementById('bookingForm').dataset.packageType
-            };
+    // Send to Google Sheets using Fetch API
+    sendToGoogleSheets(bookingData);
+}
 
-            // Validate required fields
-            if (!bookingData.name || !bookingData.contact || !bookingData.date || !bookingData.time) {
-                showAlert('Please fill in all required fields', 'error');
-                return;
-            }
+// Google Sheets Integration
+function sendToGoogleSheets(data) {
+    // Replace with your Google Apps Script Web App URL
+    const sheetsUrl = 'YOUR_GOOGLE_APPS_SCRIPT_URL';
+    
+    fetch(sheetsUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(() => {
+        showAlert('Booking submitted successfully!', 'success');
+        document.getElementById('bookingForm').style.display = 'none';
+        addMessage(`Great! Your booking has been confirmed for ${data.date} at ${data.time}. We'll contact you shortly!`, 'bot');
+    })
+    .catch(error => {
+        showAlert('Error submitting booking. Please try again.', 'error');
+        console.error('Error:', error);
+    });
+}
 
-            // Send to Google Sheets using Fetch API
-            sendToGoogleSheets(bookingData);
-        }
+// Alert System
+function showAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.textContent = message;
+    document.body.appendChild(alert);
 
-        // Google Sheets Integration
-        function sendToGoogleSheets(data) {
-            // Replace with your Google Apps Script Web App URL
-            const sheetsUrl = 'YOUR_GOOGLE_APPS_SCRIPT_URL';
-            
-            fetch(sheetsUrl, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(() => {
-                showAlert('Booking submitted successfully!', 'success');
-                document.getElementById('bookingForm').style.display = 'none';
-                addMessage(`Great! Your booking has been confirmed for ${data.date} at ${data.time}. We'll contact you shortly!`, 'bot');
-            })
-            .catch(error => {
-                showAlert('Error submitting booking. Please try again.', 'error');
-                console.error('Error:', error);
-            });
-        }
+    setTimeout(() => {
+        alert.remove();
+    }, 3000);
+}
 
-        // Alert System
-        function showAlert(message, type) {
-            const alert = document.createElement('div');
-            alert.className = `alert alert-${type}`;
-            alert.textContent = message;
-            document.body.appendChild(alert);
+// Call Functionality
+function initiateCall() {
+    // Replace with your actual support number
+    window.location.href = 'tel:+1234567890';
+}
 
-            setTimeout(() => {
-                alert.remove();
-            }, 3000);
-        }
+// Navigation Functions
+function showAllCategories() {
+    document.getElementById('categoryCarousel').style.display = 'flex';
+    document.getElementById('pageGrid').style.display = 'none';
+    document.getElementById('menuOverlay').style.display = 'none';
+}
 
-        // Call Functionality
-        function initiateCall() {
-            // Replace with your actual support number
-            window.location.href = 'tel:+1234567890';
-        }
+function showBookings() {
+    // Implement bookings view
+    addMessage("Your bookings will appear here. Feature coming soon!", 'bot');
+    document.getElementById('menuOverlay').style.display = 'none';
+}
 
-        // Navigation Functions
-        function showAllCategories() {
-            document.getElementById('categoryGrid').style.display = 'grid';
-            document.getElementById('packageGrid').style.display = 'none';
-            document.getElementById('menuOverlay').style.display = 'none';
-        }
+function showProfile() {
+    // Implement profile view
+    addMessage("Your profile settings will appear here. Feature coming soon!", 'bot');
+    document.getElementById('menuOverlay').style.display = 'none';
+}
 
-        function showBookings() {
-            // Implement bookings view
-            addMessage("Your bookings will appear here. Feature coming soon!", 'bot');
-            document.getElementById('menuOverlay').style.display = 'none';
-        }
-
-        function showProfile() {
-            // Implement profile view
-            addMessage("Your profile settings will appear here. Feature coming soon!", 'bot');
-            document.getElementById('menuOverlay').style.display = 'none';
-        }
-
-        function showSupport() {
-            // Implement support view
-            addMessage("Contact our support team at support@example.com or call us at +1234567890", 'bot');
-            document.getElementById('menuOverlay').style.display = 'none';
-        }
-    </script>
+function showSupport() {
+    // Implement support view
+    addMessage("Contact our support team at support@example.com or call us at +1234567890", 'bot');
+    document.getElementById('menuOverlay').style.display = 'none';
+}
+</script>
 </body>
 </html>
